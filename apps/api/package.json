@@ -7,8 +7,10 @@
     "start": "node dist/main",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "ts-node prisma/seed.ts",
-    "db:seed:exercises": "ts-node prisma/seed-exercises.ts"
+    "db:seed:exercises": "ts-node prisma/seed-exercises.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
