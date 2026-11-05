@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ACADEMY_ADMIN
+  TRAINER
+  NUTRITIONIST
+  RECEPTIONIST
+  STUDENT
+}
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+enum MembershipStatus {
+  ACTIVE
+  PENDING
+  OVERDUE
+  CANCELLED
+}
+
+enum Gender {
+  FEMALE
+  MALE
+  OTHER
+}
+
+enum MealPlanStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+}
+
+model Academy {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  email       String?
+  phone       String?
+  logoUrl     String?
+  primaryColor String  @default("#7C3AED")
+  status      RecordStatus @default(ACTIVE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+  memberships Membership[]
+  students    StudentProfile[]
+  programs    TrainingProgram[]
+  exercises   Exercise[]
+  mealPlans   MealPlan[]
+  progress    ProgressEntry[]
+  banners     Banner[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  academyId    String?
+  academy      Academy? @relation(fields:[academyId], references:[id], onDelete:SetNull)
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(STUDENT)
+  phone        String?
+  avatarUrl    String?
+  status       RecordStatus @default(ACTIVE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  studentProfile StudentProfile?
+  createdPrograms TrainingProgram[] @relation("ProgramCreator")
+  authoredMealPlans MealPlan[] @relation("MealPlanNutritionist")
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields:[userId], references:[id], onDelete:Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model StudentProfile {
+  id          String @id @default(cuid())
+  userId      String @unique
+  user        User   @relation(fields:[userId], references:[id], onDelete:Cascade)
+  academyId   String
+  academy     Academy @relation(fields:[academyId], references:[id], onDelete:Cascade)
+  birthDate   DateTime?
+  gender      Gender?
+  heightCm    Float?
+  goal        String?
+  memberships Membership[]
+  progress    ProgressEntry[]
+  mealPlans   MealPlan[]
+  trainingPrograms TrainingProgram[]
+}
+
+model Membership {
+  id          String @id @default(cuid())
+  academyId   String
+  academy     Academy @relation(fields:[academyId], references:[id], onDelete:Cascade)
+  studentId   String
+  student     StudentProfile @relation(fields:[studentId], references:[id], onDelete:Cascade)
+  planName    String
+  monthlyPrice Decimal @db.Decimal(10,2)
+  status      MembershipStatus @default(PENDING)
+  startDate   DateTime @default(now())
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model TrainingProgram {
+  id          String @id @default(cuid())
+  academyId   String
+  academy     Academy @relation(fields:[academyId], references:[id], onDelete:Cascade)
+  studentId   String?
+  student     StudentProfile? @relation(fields:[studentId], references:[id], onDelete:SetNull)
+  title       String
+  description String?
+  goal        String?
+  active      Boolean @default(true)
+  createdById String
+  createdBy   User @relation("ProgramCreator", fields:[createdById], references:[id])
+  items       TrainingItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Exercise {
+  id          String @id @default(cuid())
+  academyId   String
+  academy     Academy @relation(fields:[academyId], references:[id], onDelete:Cascade)
+  name        String
+  muscleGroup String
+  instructions String?
+  videoUrl    String?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  trainingItems TrainingItem[]
+}
+
+model TrainingItem {
+  id          String @id @default(cuid())
+  programId   String
+  program     TrainingProgram @relation(fields:[programId], references:[id], onDelete:Cascade)
+  exerciseId  String?
+  exercise    Exercise? @relation(fields:[exerciseId], references:[id], onDelete:SetNull)
+  exerciseName String
+  sets        Int
+  reps        String
+  restSeconds Int @default(60)
+  notes       String?
+  order       Int @default(0)
+}
+
+model MealPlan {
+  id          String @id @default(cuid())
+  academyId   String
+  academy     Academy @relation(fields:[academyId], references:[id], onDelete:Cascade)
+  studentId   String?
+  student     StudentProfile? @relation(fields:[studentId], references:[id], onDelete:SetNull)
+  nutritionistId String?
+  nutritionist   User? @relation("MealPlanNutritionist", fields:[nutritionistId], references:[id], onDelete:SetNull)
+  title       String
+  description String?
+  goal        String?
+  status      MealPlanStatus @default(DRAFT)
+  dailyWaterLiters Float?
+  meals       Meal[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Meal {
+  id          String @id @default(cuid())
+  mealPlanId  String
+  mealPlan    MealPlan @relation(fields:[mealPlanId], references:[id], onDelete:Cascade)
+  name        String
+  time        String?
+  description String
+  calories    Int?
+  order       Int @default(0)
+}
+
+model ProgressEntry {
+  id          String @id @default(cuid())
+  academyId   String
+  academy     Academy @relation(fields:[academyId], references:[id], onDelete:Cascade)
+  studentId   String
+  student     StudentProfile @relation(fields:[studentId], references:[id], onDelete:Cascade)
+  weightKg    Float?
+  bodyFatPct  Float?
+  waistCm     Float?
+  notes       String?
+  measuredAt  DateTime @default(now())
+}
+
+model Banner {
+  id        String   @id @default(cuid())
+  academyId String
+  academy   Academy  @relation(fields:[academyId], references:[id], onDelete:Cascade)
+  title     String
+  imageUrl  String
+  linkUrl   String?
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
